@@ -110,11 +110,20 @@ The local seed script (`npm run seed`) provisions 6 factory personas across 3 fu
 ## 📐 Formulas, Validations & Edge Case Rules
 
 ### 1. Mathematical Formulas
-$$\text{Accepted Quantity} = \text{Total Produced} - \text{Rejected Quantity}$$
 
-$$\text{Rejection Percentage} = \begin{cases} 0.0\% & \text{if } \text{Total Produced} = 0 \\ \left(\frac{\text{Rejected Quantity}}{\text{Total Produced}} \times 100\right) & \text{if } \text{Total Produced} > 0 \end{cases}$$
+- **Accepted Quantity**:
+  $$\text{Accepted Quantity} = \text{Produced Quantity} - \text{Rejected Quantity}$$
 
-$$\text{Achievement Percentage} = \begin{cases} \text{—} & \text{if } \text{Planned Quantity} = 0 \\ \left(\frac{\text{Total Produced}}{\text{Planned Quantity}} \times 100\right) & \text{if } \text{Planned Quantity} > 0 \end{cases}$$
+- **Rejection Percentage**:
+  $$\text{Rejection Rate (\%)} = \left( \frac{\text{Rejected Quantity}}{\text{Produced Quantity}} \right) \times 100$$
+  *(Evaluates to `0.0%` if Produced Quantity is 0)*
+
+- **Achievement Percentage**:
+  $$\text{Achievement Rate (\%)} = \left( \frac{\text{Accepted Quantity}}{\text{Planned Quantity}} \right) \times 100$$
+  *(Evaluates to `—` if Planned Quantity is 0)*
+
+- **Machine Running Time**:
+  $$\text{Running Time (min)} = 60 - \text{Downtime Minutes}$$
 
 *Rounding Standard: Round-half-up to 1 decimal place (`Math.round(val * 10) / 10`).*
 
