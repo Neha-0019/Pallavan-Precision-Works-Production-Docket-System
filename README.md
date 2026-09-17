@@ -10,6 +10,7 @@
 <br/>
 <br/>
 
+<<<<<<< HEAD
 [![Hero Banner](assets/hero-banner.svg)](#)
 
 <br/>
@@ -27,6 +28,21 @@
 
 ## 📌 Executive Summary
 
+=======
+[![React](https://img.shields.io/badge/React-19.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore_%26_Auth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![IndexedDB](https://img.shields.io/badge/Storage-Offline_IndexedDB-06B6D4?style=for-the-badge&logo=databricks&logoColor=white)](#-offline-persistence--conflict-resolution)
+[![SheetJS](https://img.shields.io/badge/Export-Excel_XLSX-10B981?style=for-the-badge&logo=microsoftexcel&logoColor=white)](#-excel-export-specification)
+
+</div>
+
+---
+
+## 📌 Executive Summary
+
+>>>>>>> 4844765 (Add additional project files)
 **Pallavan Precision Works (PPW)** is a high-precision CNC and automotive component fabrication facility. Previously, machine bay operators tracked hourly production metrics on printed physical dockets. Arithmetic errors, lost sheets, delayed defect reporting, and manual data transcription into spreadsheets led to severe operational lag.
 
 The **Production Docket System** replaces paper records with a glove-friendly, offline-first digital docket interface built for rugged shop-floor tablets. It introduces:
@@ -42,6 +58,7 @@ The **Production Docket System** replaces paper records with a glove-friendly, o
 
 The lifecycle of every hourly production slot passes through four hardened stages:
 
+<<<<<<< HEAD
 [![Lifecycle Pipeline](assets/workflow-pipeline.svg)](#)
 
 ---
@@ -118,6 +135,88 @@ The local seed script (`npm run seed`) provisions 6 factory personas across 3 fu
   $$\text{Rejection Rate (\%)} = \left( \frac{\text{Rejected Quantity}}{\text{Produced Quantity}} \right) \times 100$$
   *(Evaluates to `0.0%` if Produced Quantity is 0)*
 
+=======
+```mermaid
+flowchart LR
+    A["🟡 DRAFT<br/>(Operator Logs Numbers)"] -->|Submit| B["🔵 SUBMITTED<br/>(Locked for Operator)"]
+    B -->|Supervisor Approve| C["🟢 APPROVED<br/>(Permanently Locked)"]
+    B -->|Supervisor Return| D["🔴 RETURNED<br/>(With Inspection Note)"]
+    D -->|Edit & Resubmit| B
+```
+
+---
+
+## 🚦 Physical Machine Stack-Lights & Visual States
+
+Taking direct inspiration from industrial machine beacons (Patlite / Andon towers), every docket displays real-time operational status through animated stack-lights and tactile ink stamps:
+
+| Docket State | Stack-Light Beacon | Physical Ink Stamp | Edit Permissions | Transition Triggers |
+| :--- | :--- | :--- | :--- | :--- |
+| **`draft`** | 🟡 Pulsing Amber | `IN-PROGRESS` | Operator Only | Initial save by Operator |
+| **`submitted`** | 🔵 Solid Blue | `QUEUED FOR AUDIT` | Locked (Read-Only) | Submitted by Operator to Supervisor |
+| **`approved`** | 🟢 Radiant Emerald | `VERIFIED & APPROVED` | Fully Locked | Signed off by Shift Supervisor |
+| **`returned`** | 🔴 Alert Ruby | `ACTION REQUIRED` | Operator Only | Returned by Supervisor with mandatory note |
+
+---
+
+## 🔐 Role-Based Access Control (RBAC)
+
+Permissions are strictly enforced at the **Firestore Security Rules layer** (`firestore.rules`), not merely hidden in the user interface.
+
+```mermaid
+graph TD
+    A[Operator Station] -->|Create / Edit Draft| B[(Firestore Local Cache)]
+    A -->|Submit Docket| C{Firestore Security Rules}
+    C -->|Status: Submitted| D[Supervisor Station]
+    D -->|Approve Entry| E[Immutable Approved Docket]
+    D -->|Return with Reason| F[Returned Docket]
+    F -->|Edit & Resubmit| A
+    E --> G[Manager Analytics & XLSX Export]
+    D --> G
+```
+
+### Authorization Matrix
+
+| Operational Capability | 👷 Operator | 👨‍💼 Supervisor | 📊 Plant Manager |
+| :--- | :---: | :---: | :---: |
+| **Create Hourly Entry** | ✅ | ❌ | ❌ |
+| **Edit Own Draft / Returned** | ✅ | ❌ | ❌ |
+| **Edit Other Operator's Draft** | ❌ (Blocked by Rules) | ❌ | ❌ |
+| **Submit Entry for Review** | ✅ | ❌ | ❌ |
+| **View Other Operators' Entries** | ❌ (Own entries only) | ✅ (All plant bays) | ✅ (Read-only plantwide) |
+| **Approve Entry** | ❌ | ✅ | ❌ |
+| **Return Entry (w/ Mandatory Remark)** | ❌ | ✅ | ❌ |
+| **Direct Excel (.xlsx) Export** | ❌ | ✅ | ✅ |
+
+---
+
+## 🧪 Pre-Configured Test Credentials
+
+The local seed script (`npm run seed`) provisions 6 factory personas across 3 functional tiers:
+
+| Role | Email | Password | Assigned Bay / Privileges |
+| :--- | :--- | :--- | :--- |
+| **Operator 1** | `operator1@ppw.local` | `operator123` | CNC Milling Bay 01 & Lathe 02 |
+| **Operator 2** | `operator2@ppw.local` | `operator123` | Grinding Cell 03 & VMC 04 |
+| **Supervisor 1** | `supervisor1@ppw.local` | `super123` | Shift A & B Floor Inspection |
+| **Supervisor 2** | `supervisor2@ppw.local` | `super123` | Shift C Floor Inspection |
+| **Plant Manager 1** | `manager1@ppw.local` | `manager123` | Plant Operations & QA Audits |
+| **Plant Manager 2** | `manager2@ppw.local` | `manager123` | Production Planning & Dispatch |
+
+---
+
+## 📐 Formulas, Validations & Edge Case Rules
+
+### 1. Mathematical Formulas
+
+- **Accepted Quantity**:
+  $$\text{Accepted Quantity} = \text{Produced Quantity} - \text{Rejected Quantity}$$
+
+- **Rejection Percentage**:
+  $$\text{Rejection Rate (\%)} = \left( \frac{\text{Rejected Quantity}}{\text{Produced Quantity}} \right) \times 100$$
+  *(Evaluates to `0.0%` if Produced Quantity is 0)*
+
+>>>>>>> 4844765 (Add additional project files)
 - **Achievement Percentage**:
   $$\text{Achievement Rate (\%)} = \left( \frac{\text{Accepted Quantity}}{\text{Planned Quantity}} \right) \times 100$$
   *(Evaluates to `—` if Planned Quantity is 0)*
@@ -128,17 +227,30 @@ The local seed script (`npm run seed`) provisions 6 factory personas across 3 fu
 *Rounding Standard: Round-half-up to 1 decimal place (`Math.round(val * 10) / 10`).*
 
 ### 2. The 10.0% Rejection Threshold Rule
+<<<<<<< HEAD
 - If $\text{Rejection } \% > 10.0\%$, the UI and Firestore rules **mandate** an explanation in `rejectionRemarks`.
+=======
+- If $\text{Rejection } \% > 10.0\%$, the UI and Firestore rules **mandate** an explanation in `remarks`.
+>>>>>>> 4844765 (Add additional project files)
 - Submissions exceeding 10.0% without a remark are rejected both by client-side validation and database rules.
 
 ### 3. Rejection Reason Taxonomy
 To eliminate unparsed handwriting, rejection reasons are strictly bound to an industrial enum:
+<<<<<<< HEAD
 - `Dimensional deviation`
 - `Surface finish defect`
 - `Burr / Flash formation`
 - `Material defect / Porosity`
 - `Tooling / Setup error`
 - `Other (Specified in remarks)`
+=======
+- `Dimensional`
+- `Surface finish`
+- `Burr`
+- `Material defect`
+- `Setup error`
+- `Other`
+>>>>>>> 4844765 (Add additional project files)
 
 ### 4. Shift Midnight Crossing (Shift C)
 - **Shift A**: `06:00 – 14:00`
@@ -161,7 +273,11 @@ In a busy machine bay surrounded by high-voltage equipment and metal shielding, 
    - Any entry queued in the browser's local cache displays a prominent amber badge: `PENDING SYNC (OFFLINE)`.
 3. **Deterministic Uniqueness**:
    - Keys are generated as: `${machineId}_${date}_${shift}_${hourSlot}`.
+<<<<<<< HEAD
    - Example: `CNC-01_2026-09-15_A_06:00-07:00`.
+=======
+   - Example: `PPW-CNC-01_2026-09-16_A_06000700`.
+>>>>>>> 4844765 (Add additional project files)
 4. **Server-Side Safety**:
    - If an offline device attempts to submit an entry for a slot that has already been approved on the server, Firestore security rules reject the mutation, rolling back the local optimistic draft and preventing corrupted historical logs.
 
@@ -171,24 +287,40 @@ In a busy machine bay surrounded by high-voltage equipment and metal shielding, 
 
 Supervisors and Managers can export complete shift records directly into formatted Microsoft Excel (`.xlsx`) files via SheetJS:
 
+<<<<<<< HEAD
 ```
 PPW_Production_Export_[TIMESTAMP].xlsx
 │
+=======
+```text
+PPW_Production_Export_[TIMESTAMP].xlsx
+>>>>>>> 4844765 (Add additional project files)
 └── Sheet: "Production Data"
     ├── Machine ID
     ├── Shift Date
     ├── Shift Code (A/B/C)
     ├── Hour Slot
+<<<<<<< HEAD
     ├── Part Number & Name
+=======
+    ├── Part Number
+>>>>>>> 4844765 (Add additional project files)
     ├── Planned Target Qty
     ├── Total Produced Qty
     ├── Rejected Qty
     ├── Accepted Qty [Calculated]
     ├── Rejection Rate (%) [Calculated]
     ├── Achievement Rate (%) [Calculated]
+<<<<<<< HEAD
     ├── Rejection Root Cause
     ├── Rejection Remarks
     ├── Operator UID
+=======
+    ├── Downtime (min) & Reason
+    ├── Running Time (min) [Calculated]
+    ├── Rejection Reason & Remarks
+    ├── Operator Name & ID
+>>>>>>> 4844765 (Add additional project files)
     ├── Docket Status (Draft / Submitted / Approved / Returned)
     └── Supervisor Remarks
 ```
@@ -199,12 +331,20 @@ PPW_Production_Export_[TIMESTAMP].xlsx
 
 ### Prerequisites
 - **Node.js**: `v18.0.0` or higher
+<<<<<<< HEAD
 - **Java Runtime (JRE)**: Version 11+ (required by Firebase Local Emulators)
+=======
+- **Java Runtime (JRE / OpenJDK)**: Version 21+ (required by Firebase Local Emulators)
+>>>>>>> 4844765 (Add additional project files)
 - **Package Manager**: `npm` (included with Node)
 
 ### 1. Clone & Install
 ```bash
+<<<<<<< HEAD
 git clone https://github.com/SOUMYA0023/Pallavan-Precision-Works-Production-Docket-System.git
+=======
+git clone https://github.com/Neha-0019/Pallavan-Precision-Works-Production-Docket-System.git
+>>>>>>> 4844765 (Add additional project files)
 cd Pallavan-Precision-Works-Production-Docket-System
 npm install
 ```
@@ -234,18 +374,26 @@ Open [http://localhost:5173](http://localhost:5173) in your browser. Log in with
 ## 🛠️ Project Structure
 
 ```bash
+<<<<<<< HEAD
 APEX/
 ├── assets/                          # Animated SVG banners & architectural diagrams
 │   ├── hero-banner.svg             # Cyberpunk industrial animated hero header
 │   ├── workflow-pipeline.svg       # Real-time data pipeline diagram
 │   └── stack-lights.svg            # Animated stack-light status indicators
+=======
+pallavan-precision-works/
+>>>>>>> 4844765 (Add additional project files)
 ├── seed/
 │   └── seedUsers.ts                # Emulator identity & credentials provisioning
 ├── src/
 │   ├── components/
 │   │   ├── EditEntryPage.tsx       # Edit view for draft and returned dockets
 │   │   ├── EntryCard.tsx           # Machine docket card with ink stamps
+<<<<<<< HEAD
 │   │   ├── EntryForm.tsx           # Hourly docket form with 48px touch targets
+=======
+│   │   ├── EntryForm.tsx           # Hourly docket form with touch targets
+>>>>>>> 4844765 (Add additional project files)
 │   │   ├── EntryList.tsx           # Filterable production log with stack lights
 │   │   ├── ExportPanel.tsx         # Date & shift multi-filter Excel exporter
 │   │   ├── LoginPage.tsx           # Role selector & credential authenticator
@@ -253,18 +401,34 @@ APEX/
 │   │   ├── StatusBadge.tsx         # Stack-light visual state component
 │   │   └── SyncIndicator.tsx       # Offline/online status beacon
 │   ├── hooks/
+<<<<<<< HEAD
+=======
+│   │   ├── useAuth.ts              # Authentication state hook
+│   │   ├── useEntries.ts           # Firestore real-time listener & mutations
+>>>>>>> 4844765 (Add additional project files)
 │   │   └── useOnlineStatus.ts      # Network connectivity monitor
 │   ├── styles/
 │   │   └── index.css               # High-contrast machine-shop design system
 │   ├── utils/
+<<<<<<< HEAD
 │   │   ├── export.ts               # SheetJS Excel parser & formatting engine
 │   │   ├── seedData.ts             # Default parts catalog & machine roster
 │   │   └── validation.ts           # Math rules & rejection percentage engine
+=======
+│   │   ├── calculations.ts         # Math rules & rejection percentage engine
+│   │   ├── export.ts               # SheetJS Excel parser & formatting engine
+│   │   ├── seedData.ts             # Default parts catalog & machine roster
+│   │   └── validation.ts           # Client-side input validation rules
+>>>>>>> 4844765 (Add additional project files)
 │   ├── firebase.ts                 # Firestore & Auth emulator config
 │   ├── types.ts                    # TypeScript types & interface declarations
 │   └── main.tsx                    # React 19 bootstrap
 ├── CLIENT_FAQ.md                   # Operational Q&A & client technical handoff
+<<<<<<< HEAD
 ├── TECHNICAL_NOTE.md               # Engineering architectural trade-offs & notes
+=======
+├── TECHNICAL_NOTE.md               # Engineering architectural notes
+>>>>>>> 4844765 (Add additional project files)
 ├── firestore.rules                 # Hardened security rules enforcing RBAC
 └── vite.config.ts                  # Vite build & bundle configuration
 ```
@@ -280,6 +444,7 @@ All state changes append a record to the docket's `statusHistory` array:
   "statusHistory": [
     {
       "status": "draft",
+<<<<<<< HEAD
       "changedBy": "operator1@ppw.local",
       "changedAt": "2026-09-15T06:30:00.000Z"
     },
@@ -293,6 +458,23 @@ All state changes append a record to the docket's `statusHistory` array:
       "changedBy": "supervisor1@ppw.local",
       "changedAt": "2026-09-15T07:20:00.000Z",
       "remarks": "Part dimensions within tolerance (±0.02mm). Approved."
+=======
+      "actor": "y2b6seyhOYP5YhhiwDlgxCAYiZVc",
+      "actorName": "Ravi Kumar",
+      "timestamp": "2026-09-16T06:30:00.000Z"
+    },
+    {
+      "status": "submitted",
+      "actor": "y2b6seyhOYP5YhhiwDlgxCAYiZVc",
+      "actorName": "Ravi Kumar",
+      "timestamp": "2026-09-16T07:05:00.000Z"
+    },
+    {
+      "status": "approved",
+      "actor": "ix3D6QmwofWnlXm4STdjr8Wy1bgd",
+      "actorName": "Anand Raj",
+      "timestamp": "2026-09-16T07:20:00.000Z"
+>>>>>>> 4844765 (Add additional project files)
     }
   ]
 }

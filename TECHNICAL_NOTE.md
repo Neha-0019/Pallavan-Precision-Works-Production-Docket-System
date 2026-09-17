@@ -1,79 +1,79 @@
-# Technical Note
+# Technical Note — Pallavan Precision Works Production Docket System
 
-I'm the engineer who built this. Here's what I did, what I didn't do, and where the bodies are buried.
+**Author:** Neha Panbude  
+**Programme:** ApexFlow Technologies Manufacturing Systems Programme  
+**Project:** Pallavan Precision Works (PPW) — Shift Production Entry & Approval System  
 
-## What Was Built
+---
 
-The complete core: shift production entry form with all fields and validation, live calculated fields, role-based access enforced at the Firestore rules layer (not just UI), the full approval chain (Draft → Submitted → Approved, with a Returned branch), offline persistence via Firestore's IndexedDB cache, sync status indicators, and Excel export. Everything from Sections 3–9 of the spec.
+## 1. What Was Built
 
-Stretch items (Section 10) were not attempted. The core is solid and I'd rather ship that than bolt on a half-baked signature pad.
+### Core Architecture & Tech Stack
+- **Frontend:** Built with **React 19**, **TypeScript**, and **Vite**, designed as a tablet-first, glove-friendly PWA interface (dark-mode industrial aesthetic, 48px minimum touch targets, high-contrast typography).
+- **Backend & Database:** **Firebase Authentication** (custom claims and role-based personas) paired with **Cloud Firestore** running entirely on local emulators (`demo-ppw`) for offline development without cloud credentials.
+- **Export Utility:** Client-side **SheetJS (`xlsx`)** workbook generation for structured manufacturing reporting.
 
-## Stack Choice
+### Functional Scope (Sections 3–9 of the Specification)
+1. **Shift Production Entry:** Hourly production recording parameterized by Date, Shift (A, B, C), Hour Slot, Machine ID (`PPW-CNC-01` through `PPW-GRIND-05`), and Part Number (`PN-4471-A` through `PN-2256`).
+2. **Deterministic Uniqueness:** Structural document keys (`${machineId}_${date}_${shift}_${hourSlotKey}`) preventing duplicate dockets for identical machine bays and slots.
+3. **Live Shop Arithmetic Engine:** Real-time formula computation:
+   - $\text{Accepted Qty} = \text{Produced Qty} - \text{Rejected Qty}$
+   - $\text{Rejection Rate (\%)} = (\text{Rejected Qty} / \text{Produced Qty}) \times 100$
+   - $\text{Achievement Rate (\%)} = (\text{Accepted Qty} / \text{Planned Qty}) \times 100$
+   - $\text{Running Time (min)} = 60 - \text{Downtime Minutes}$
+4. **Enforced Quality Rules:**
+   - Mandatory rejection reason dropdown when $\text{Rejected} > 0$.
+   - Mandatory downtime explanation when $\text{Downtime} > 0$.
+   - Boundary-triggered inline amber caution alerts and database-enforced mandatory remarks whenever rejection strictly exceeds $10.0\%$.
+5. **State Machine & Lifecycle Pipeline:**
+   - Four discrete states: `draft` $\rightarrow$ `submitted` $\rightarrow$ `approved` / `returned`.
+   - Immutable audit logging on every state change (`statusHistory` array tracking UID, display name, timestamp, and inspection notes).
+6. **Hardened Role-Based Security Rules (`firestore.rules`):**
+   - Access control and data validations are enforced directly by the Firestore database engine, preventing compromised clients from writing unauthorized transitions or bypassing math constraints.
+7. **Offline-First Persistence:** Native Firestore IndexedDB caching enabling operators to log dockets without active network connectivity, backed by per-entry synchronization indicators (`hasPendingWrites`).
 
-React + TypeScript + Vite with Firebase Auth and Firestore. This is what the spec asked for and it's what I'm fastest in. Vite because CRA is dead. No component library — the UI is custom CSS tuned for a machine-shop environment (dark theme, high contrast, 48px minimum tap targets for operators in work gloves).
+---
 
-I chose a responsive web app over React Native. The spec mentions RN as a preference but describes a web deliverable. A tablet-optimized web app covers the use case without the overhead of native builds and Xcode/Android Studio.
+## 2. What Was Not Built
 
-## Assumptions Made Where the Spec Was Silent
+1. **Section 10 Stretch Features:** Canvas-based digital supervisor signatures and longitudinal trend analytics charts (Pareto/trend graphs) were intentionally omitted in favor of shipping an airtight, validated core system.
+2. **Interactive Conflict Resolution & Merge UI:** In cases where an offline write conflicts with an entry that was already approved on the server, the server rejects the write and rolls back locally. A side-by-side visual merge modal was not constructed.
+3. **Multi-Sheet Export:** The Excel exporter generates an audit-ready single sheet with all operational counts and status flags, but does not split out a separate secondary tab for granular transition timestamps.
 
-### Division by Zero
-- **Produced = 0**: Rejection percentage is 0.0%, not NaN or Infinity. You can't have rejections if you produced nothing.
-- **Planned = 0**: Achievement percentage displays "—" rather than a number. Dividing by zero planned is meaningless — if someone enters 0 planned, it's probably a mistake but I'm not going to show them Infinity%.
+---
 
-### Rounding
-`Math.round(value * 10) / 10` — standard round-half-up to one decimal. So 10.05% rounds to 10.1%, which would trigger the mandatory-remark rule.
+## 3. Assumptions Made Where the Specification Was Unclear
 
-### The 10% Rejection Threshold
-"Exceeds 10%" means strictly greater than 10.0%. An entry with exactly 10.0% rejection does not require a remark. I read "> 10%" as "> 10.0%". If the client meant ≥ 10%, that's a one-character change in two places.
+1. **Division by Zero:**
+   - When $\text{Produced} = 0$, rejection rate evaluates to `0.0%` (not `NaN` or `Infinity`), as zero pieces produced implies zero defects.
+   - When $\text{Planned} = 0$, achievement percentage displays as a dash (`—`) rather than `Infinity%`, representing an unassigned or maintenance slot.
+2. **Mathematical Rounding:**
+   - Round-half-up to one decimal place (`Math.round(val * 10) / 10`). For example, $10.05\%$ rounds to $10.1\%$, which appropriately triggers the mandatory quality remark requirement.
+3. **The 10.0% Rejection Threshold:**
+   - Interpreted as strictly greater than ($> 10.0\%$). An entry with exactly $10.0\%$ scrap does not require mandatory remarks; $10.1\%$ and above does.
+4. **Shift C Midnight Crossing (22:00–06:00):**
+   - In accordance with standard manufacturing practice, all hours within Shift C (including 00:00 to 06:00 AM) are timestamped with the calendar date on which the shift commenced, preserving 8-hour batch accounting continuity.
+5. **Supervisor Return Flow:**
+   - Returning a docket requires an explicit inspection note from the supervisor. The returned docket is editable by the originating operator and transitions from `returned` $\rightarrow$ `draft` upon modification, or directly `returned` $\rightarrow$ `submitted` upon resubmission.
+6. **Rejection Taxonomy:**
+   - Rejection causes are strictly constrained to the 6 industrial categories (`Dimensional`, `Surface finish`, `Burr`, `Material defect`, `Setup error`, `Other`) in both frontend select pickers and backend security rules.
 
-### Shift C and Midnight
-Shift C (22:00–06:00) crosses midnight. The entry date belongs to the date the shift *started*, not when the hour slot occurs. So a 02:00–03:00 entry during a Shift C that started on Sept 14 carries the date 2024-09-14. This is the standard convention in manufacturing.
+---
 
-### Returned Entry Flow
-When a supervisor returns an entry, its status becomes "returned." When the operator edits it, the status resets to "draft." The operator can also submit directly from "returned" without editing (the status transitions returned → submitted). Both paths are allowed by the Firestore rules. Every transition is recorded in the `statusHistory` array with actor, timestamp, and remark.
+## 4. Anything Weak or Incomplete
 
-### Export Format
-Excel over PDF. Production data is tabular — supervisors will want to sort and filter it, not just look at it. A `.xlsx` file with all calculated fields and approval status is more useful than a fixed-layout PDF.
+1. **Silent Local Rollback on Offline Conflicts:** If an offline operator creates an entry for a slot that was already approved on the server, the server rule rejects the mutation when reconnected. The local optimistic entry rolls back without a persistent visual banner explaining why the slot was lost.
+2. **Single-Sheet Audit Export:** While supervisors can inspect full audit histories within the web application, the Excel download only exports the current status snapshot rather than the complete chronological transition log.
+3. **Emulator-Only Configuration:** The current setup is configured exclusively against local Firebase emulators. While production deployment only requires swapping `src/firebase.ts` configuration, continuous database migration scripts were not bundled.
+4. **Automated Unit Testing:** Due to time allocation prioritising database-level `firestore.rules` and full TypeScript type integrity, formal automated unit tests (e.g., Vitest or `@firebase/rules-unit-testing`) were not added.
 
-### Rejection Reason Constraint
-The six rejection reasons from the spec (Dimensional, Surface finish, Burr, Material defect, Setup error, Other) are enforced as an enum both in the UI dropdown and in the Firestore security rules. You cannot write a free-form reason even via direct API access.
+---
 
-## Offline Conflict Resolution
+## 5. What I Would Change Given Another Week
 
-This is the hardest part of the spec and deserves honest treatment.
+1. **Security Rules Test Suite:** Implement automated unit tests for `firestore.rules` using `@firebase/rules-unit-testing` covering all RBAC transition paths and boundary cases.
+2. **Interactive Conflict Resolution Modal:** Build a conflict reconciliation dialogue that detects optimistic write rollbacks, displays the server version alongside local draft state, and allows the operator to review differences.
+3. **Live Supervisor Push Notifications:** Implement web push notifications or a live badge count in the header to alert supervisors in real time when new dockets are queued for review.
+4. **Two-Tab Excel Reporting:** Expand the SheetJS utility to export a secondary tab containing the full chronological audit trail with supervisor inspection remarks.
+5. **Section 10 Stretch Implementations:** Add HTML5 Canvas touch signature capture on supervisor approval and historical scrap Pareto charts by machine and part number.
 
-### What Works
-Firestore's IndexedDB persistence handles the basic case: operator goes offline, creates entries, comes back online, entries sync automatically. The `hasPendingWrites` flag from Firestore snapshot metadata drives the per-entry sync indicator — a persistent visual flag, not a toast.
-
-### The Dangerous Case: Offline Draft vs. Already-Approved Entry
-Document IDs are deterministic (machine_date_shift_hourSlot), which makes uniqueness structural. But it also means an offline write targets the same document ID as an entry that may have been submitted or approved while the operator was offline.
-
-The Firestore security rules block this: an operator can only write to a document whose current status is "draft" or "returned." If the entry was submitted or approved in the meantime, the server rejects the offline write. The Firestore SDK rolls back the optimistic local write, and the entry list shows the server's version. The operator's local input disappears — they haven't lost the data (it's in form state in memory), but they need to talk to their supervisor about the conflict.
-
-### What I Didn't Build
-A merge/diff UI that shows "your version vs. server version" when a conflict occurs. That's a real feature that would take several hours on its own — detecting the rollback, preserving the local state, presenting both versions, and letting the operator choose. Worth doing given another week.
-
-### Two Drafts from Two Devices
-If two operators create entries for the same slot while both are offline, it's last-write-wins on the same document ID. The losing write is silently overwritten. This is acceptable for drafts — no approved data is lost. In practice, this should be rare because operators are assigned to specific machines, but it's a real gap.
-
-## What's Weak
-
-1. **The offline conflict UX is abrupt.** When a pending write gets rejected by the server, the entry just disappears from the operator's list. There's no "hey, this slot was already taken" message that persists. The operator has to notice the entry is gone and infer what happened. A proper conflict notification system would fix this.
-
-2. **No data export for the full audit trail.** The Excel export shows the current status of each entry, but not the full `statusHistory`. A supervisor can see who approved what in the app, but can't export that history. Adding a second sheet to the workbook with the audit trail would be an easy win.
-
-3. **Emulator-only setup means no data persists between restarts** (unless you use `--export-on-exit` and `--import`, which the npm script does support). For a real deployment, you'd point at a live Firebase project.
-
-4. **No automated tests.** Under the 10-14 hour budget, I chose to spend the time on the Firestore security rules (which are the real validation layer) rather than writing unit tests for the client-side validation that duplicates those rules. The rules themselves are tested manually through the emulator. Given another week, I'd add a security rules test suite using the Firebase rules testing library.
-
-## What Would Change Given Another Week
-
-1. A proper conflict resolution UI for offline sync failures.
-2. Firestore security rules unit tests using `@firebase/rules-unit-testing`.
-3. The stretch items: digital supervisor signature on approval, and a summary dashboard showing rejection rates by machine and by part over a date range.
-4. Audit trail export in the Excel file.
-5. Push notifications (or at minimum, a badge/counter) for supervisors when new entries are submitted.
-
-## Deployed Link
-
-Not included. The app runs locally against Firebase emulators. Deploying to a live Firebase project is straightforward (swap the config, deploy rules, create auth users in the console) but doesn't add assessment value for a tool that's meant to run on a factory-floor tablet connected to a local network.
